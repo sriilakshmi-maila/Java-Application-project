@@ -49,16 +49,17 @@ jobs:
 
       - name: Build Production Container Image
         run: |
-          docker build -t ${{ secrets.AWS_ACCOUNT_ID }}://{{ github.sha }} .
+          docker build -t cloudshield-app:latest .
 
       - name: Docker Trivy Security Scan
         run: |
           curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
-          trivy image --severity HIGH,CRITICAL ${{ secrets.AWS_ACCOUNT_ID }}://{{ github.sha }}
+          trivy image --severity HIGH,CRITICAL cloudshield-app:latest
 
-      - name: Push Image to AWS ECR
+      - name: Tag and Push Image to AWS ECR
         run: |
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}://{{ github.sha }}
+          docker tag cloudshield-app:latest ${{ secrets.AWS_ACCOUNT_ID }}://
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}://
 
       - name: Register ECS Task Definition and Deploy
         run: |
@@ -68,4 +69,4 @@ jobs:
             --requires-compatibilities FARGATE \
             --cpu "256" \
             --memory "512" \
-            --container-definitions "[{\"name\":\"app\",\"image\":\"${{ secrets.AWS_ACCOUNT_ID }}://{{ github.sha }}\",\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}]}]"
+            --container-definitions "[{\"name\":\"app\",\"image\":\"${{ secrets.AWS_ACCOUNT_ID }}://\",\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}]}]"

@@ -1,3 +1,74 @@
-git add .github/workflows/workflow.yml
-git commit -m "Fix: Integrated official native Trivy security action"
-git push origin main
+name: Task-2 GitHub Actions CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  Build-Scan-Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Source Code Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: mvn compile
+        run: mvn compile
+
+      - name: validate
+        run: mvn validate
+
+      - name: Test
+        run: mvn test
+
+      - name: package
+        run: mvn package -DskipTests
+
+      - name: Unit Test / SonarQube Analysis
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=Krishnamohan2004_Java-Application \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+
+      - name: Authenticate to AWS ECR
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Build Production Container Image
+        run: |
+          docker build -t cloudshield-app:latest .
+
+      - name: Official DevSecOps Trivy Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'cloudshield-app:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Tag and Push Image to AWS ECR
+        run: |
+          docker tag cloudshield-app:latest ${{ secrets.AWS_ACCOUNT_ID }}://
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}://
+
+      - name: Register ECS Task Definition and Deploy
+        run: |
+          aws ecs register-task-definition \
+            --family cloudshield-task \
+            --network-mode awsvpc \
+            --requires-compatibilities FARGATE \
+            --cpu "256" \
+            --memory "512" \
+            --container-definitions "[{\"name\":\"app\",\"image\":\"${{ secrets.AWS_ACCOUNT_ID }}://\",\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}]}]"

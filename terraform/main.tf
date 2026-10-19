@@ -14,7 +14,9 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 }
 
-resource "aws_internet_gateway" "gw" { vpc_id = aws_vpc.main.id }
+resource "aws_internet_gateway" "gw" { 
+  vpc_id = aws_vpc.main.id 
+}
 
 resource "aws_route_table" "rt" {
   vpc_id = aws_vpc.main.id
@@ -33,18 +35,63 @@ resource "aws_security_group" "sg" {
   name   = "cloudshield-sg"
   vpc_id = aws_vpc.main.id
 
-  ingress { from_port = 22; to_port = 22; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 9000; to_port = 9000; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 9090; to_port = 9090; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 3000; to_port = 3000; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 9100; to_port = 9100; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 8080; to_port = 8080; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  egress { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
+  ingress {
+    from_port   = 9000
+    to_port     = 9000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-resource "aws_ecr_repository" "repo" { name = "cloudshield-app" }
-resource "aws_ecs_cluster" "cluster" { name = "cloudshield-ecs-cluster" }
+resource "aws_ecr_repository" "repo" { 
+  name = "cloudshield-app" 
+}
+
+resource "aws_ecs_cluster" "cluster" { 
+  name = "cloudshield-ecs-cluster" 
+}
 
 resource "aws_instance" "devops_node" {
   ami                    = "ami-0c7217cdde317cfec"

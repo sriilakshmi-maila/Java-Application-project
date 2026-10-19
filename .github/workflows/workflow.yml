@@ -45,21 +45,21 @@ jobs:
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_://amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
       - name: Build & Tag Container Image
         run: |
-          docker build -t $ECR_REPO:${{ github.sha }} .
-          docker tag $ECR_REPO:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_://amazonaws.com/$ECR_REPO:${{ github.sha }}
+          docker build -t ${{ env.ECR_REPO }}:${{ github.sha }} .
+          docker tag ${{ env.ECR_REPO }}:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}://{{ env.ECR_REPO }}:${{ github.sha }}
 
       - name: Docker Trivy Security Scan
         run: |
           curl -sfL https://githubusercontent.com | sh -s -- -b /usr/local/bin
-          trivy image --severity HIGH,CRITICAL ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_://amazonaws.com/$ECR_REPO:${{ github.sha }}
+          trivy image --severity HIGH,CRITICAL ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}://{{ env.ECR_REPO }}:${{ github.sha }}
 
       - name: Push Image to AWS ECR
         run: |
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_://amazonaws.com/$ECR_REPO:${{ github.sha }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}://{{ env.ECR_REPO }}:${{ github.sha }}
 
       - name: Register ECS Task Definition and Deploy
         run: |
@@ -69,4 +69,4 @@ jobs:
             --requires-compatibilities FARGATE \
             --cpu "256" \
             --memory "512" \
-            --container-definitions "[{\"name\":\"app\",\"image\":\"${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_://amazonaws.com/$ECR_REPO:${{ github.sha }}\",\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}]}]"
+            --container-definitions "[{\"name\":\"app\",\"image\":\"${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}://{{ env.ECR_REPO }}:${{ github.sha }}\",\"portMappings\":[{\"containerPort\":8080,\"hostPort\":8080}]}]"

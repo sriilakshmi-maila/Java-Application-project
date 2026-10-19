@@ -12,6 +12,25 @@ jobs:
       - name: Source Code Checkout
         uses: actions/checkout@v3
 
+      # --- STEP 1: AUTOMATED INFRASTRUCTURE PROVISIONING (TERRAFORM) ---
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Configure AWS Credentials for Infrastructure
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region us-east-1
+
+      - name: Terraform Initialize and Apply
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+
+      # --- STEP 2: APPLICATION BUILD & VERIFICATION ---
       - name: Setup Java JDK
         uses: actions/setup-java@v3
         with:
@@ -38,11 +57,10 @@ jobs:
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         continue-on-error: true
 
+      # --- STEP 3: DOCKER IMAGE BUILD & SECURITY SCAN ---
       - name: Authenticate to AWS ECR
         run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCESS_KEY_ID != '' && 'public.ecr.aws' || 'public.ecr.aws' }}
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
         continue-on-error: true
 
       - name: Build Production Container Image
